@@ -210,6 +210,10 @@ PRODUCT_PROPERTY_OVERRIDES += \
 PRODUCT_PROPERTY_OVERRIDES += \
 	ro.bq.gpu_to_cpu_unsupported=1
 
+# Crop override for video encoder
+PRODUCT_PROPERTY_OVERRIDES += \
+ 	debug.video.crop_override=1
+
 # Newer camera API isn't supported.
 PRODUCT_PROPERTY_OVERRIDES += \
 	camera2.portability.force_api=1
