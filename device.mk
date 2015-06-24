@@ -42,6 +42,10 @@ PRODUCT_PACKAGES += \
 	audio.primary.tuna \
 	memtrack.omap4
 
+# RIL
+PRODUCT_PACKAGES += \
+	libsecril-client
+
 # Sensors
 PRODUCT_PACKAGES += \
 	sensors.tuna \
