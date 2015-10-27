@@ -136,6 +136,10 @@ PRODUCT_PACKAGES += \
 	Nfc \
 	Tag
 
+# Allow tethering without provisioning app
+PRODUCT_PROPERTY_OVERRIDES += \
+    net.tethering.noprovisioning=true
+
 # Live Wallpapers
 PRODUCT_PACKAGES += \
 	LiveWallpapers \
