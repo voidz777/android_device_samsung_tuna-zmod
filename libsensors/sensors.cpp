@@ -79,31 +79,20 @@
 
 /* The SENSORS Module */
 #define LOCAL_SENSORS (4)
-static struct sensor_t sSensorList[LOCAL_SENSORS + MPLSensor::numSensors] = {
-      { "GP2A Light sensor",
-          "Sharp",
-          1, SENSORS_LIGHT_HANDLE,
-          SENSOR_TYPE_LIGHT, powf(10, 125.0f/ 24.0f) * 4, 1.0f, 0.75f, 0, 0, 0, 0, 0, 0,
-          SENSOR_FLAG_ON_CHANGE_MODE,
-	  { } },
-      { "GP2A Proximity sensor",
-          "Sharp",
-          1, SENSORS_PROXIMITY_HANDLE,
-          SENSOR_TYPE_PROXIMITY, 5.0f, 5.0f, 0.75f, 0, 0, 0, 0, 0, 0,
-	  SENSOR_FLAG_WAKE_UP | SENSOR_FLAG_ON_CHANGE_MODE,
-	  { } },
-      { "BMP180 Pressure sensor",
-          "Bosch",
-          1, SENSORS_PRESSURE_HANDLE,
-          SENSOR_TYPE_PRESSURE, 1100.0f, 0.01f, 0.67f, 20000, 0, 0, 0, 0, 20000,
-	  SENSOR_FLAG_CONTINUOUS_MODE,
-	  { } },
-      { "BMP180 Temperature sensor",
-          "Bosch",
-          1, SENSORS_TEMPERATURE_HANDLE,
-          SENSOR_TYPE_AMBIENT_TEMPERATURE, 850.0f, 0.1f, 0.67f, 20000, 0, 0, 0, 0, 20000,
-          SENSOR_FLAG_CONTINUOUS_MODE,
-      { } }
+static struct sensor_t sSensorList[LOCAL_SENSORS + MPLSensor::numSensors] =
+{
+    {"GP2A Light", "Sharp", 1, SENSORS_LIGHT_HANDLE,
+     SENSOR_TYPE_LIGHT, powf(10, 125.0f/ 24.0f) * 4, 1.0f, 0.75f, 0, 0, 0,
+     SENSOR_STRING_TYPE_LIGHT, "", 0, SENSOR_FLAG_ON_CHANGE_MODE, {}},
+    {"GP2A Proximity", "Sharp", 1, SENSORS_PROXIMITY_HANDLE,
+     SENSOR_TYPE_PROXIMITY, 5.0f, 5.0f, 0.75f, 0, 0, 0,
+     SENSOR_STRING_TYPE_PROXIMITY, "", 0, SENSOR_FLAG_WAKE_UP | SENSOR_FLAG_ON_CHANGE_MODE, {}},
+    {"BMP180 Pressure", "Bosch", 1, SENSORS_PRESSURE_HANDLE,
+     SENSOR_TYPE_PRESSURE, 1100.0f, 0.01f, 0.67f, 20000, 0, 0,
+     SENSOR_STRING_TYPE_PRESSURE, "", 20000, SENSOR_FLAG_CONTINUOUS_MODE, {}},
+    {"BMP180 Temperature", "Bosch", 1, SENSORS_TEMPERATURE_HANDLE,
+     SENSOR_TYPE_AMBIENT_TEMPERATURE, 850.0f, 0.1f, 0.67f, 20000, 0, 0,
+     SENSOR_STRING_TYPE_AMBIENT_TEMPERATURE, "", 20000, SENSOR_FLAG_CONTINUOUS_MODE, {}},
 };
 static int numSensors = LOCAL_SENSORS;
 
@@ -111,30 +100,38 @@ static int open_sensors(const struct hw_module_t* module, const char* id,
                         struct hw_device_t** device);
 
 
-static int sensors__get_sensors_list(struct sensors_module_t* module,
+static int sensors__get_sensors_list(struct sensors_module_t* module __unused,
                                      struct sensor_t const** list)
 {
     *list = sSensorList;
     return numSensors;
 }
 
+static int sensors__set_operation_mode(unsigned int mode)
+{
+    if (mode == SENSOR_HAL_NORMAL_MODE)
+        return 0;
+    return -EINVAL;
+}
+
 static struct hw_module_methods_t sensors_module_methods = {
-        open: open_sensors
+        .open = open_sensors
 };
 
 struct sensors_module_t HAL_MODULE_INFO_SYM = {
-        common: {
-                tag: HARDWARE_MODULE_TAG,
-                version_major: 1,
-                version_minor: 0,
-                id: SENSORS_HARDWARE_MODULE_ID,
-                name: "Samsung Sensor module",
-                author: "Samsung Electronic Company",
-                methods: &sensors_module_methods,
-                dso: 0,
-                reserved: {},
+        .common = {
+                .tag = HARDWARE_MODULE_TAG,
+                .module_api_version = SENSORS_MODULE_API_VERSION_0_1,
+                .hal_api_version = HARDWARE_HAL_API_VERSION,
+                .id = SENSORS_HARDWARE_MODULE_ID,
+                .name = "Samsung Sensor module",
+                .author = "Samsung Electronic Company",
+                .methods = &sensors_module_methods,
+                .dso = 0,
+                .reserved = {},
         },
-        get_sensors_list: sensors__get_sensors_list,
+        .get_sensors_list = sensors__get_sensors_list,
+        .set_operation_mode = sensors__set_operation_mode,
 };
 
 struct sensors_poll_context_t {
@@ -323,8 +320,6 @@ int sensors_poll_context_t::pollEvents(sensors_event_t* data, int count)
             // we still have some room, so try to see if we can get
             // some events immediately or just wait if we don't have
             // anything to return
-            int i;
-
             do {
                 n = poll(mPollFds, numFds, nbEvents ? 0 : polltime);
             } while (n < 0 && errno == EINTR);
@@ -389,7 +384,8 @@ static int poll__poll(struct sensors_poll_device_t *dev,
 /*****************************************************************************/
 
 /** Open a new instance of a sensor device using name */
-static int open_sensors(const struct hw_module_t* module, const char* id,
+static int open_sensors(const struct hw_module_t* module,
+                        const char* id __unused,
                         struct hw_device_t** device)
 {
     FUNC_LOG;
@@ -399,7 +395,8 @@ static int open_sensors(const struct hw_module_t* module, const char* id,
     memset(&dev->device, 0, sizeof(sensors_poll_device_t));
 
     dev->device.common.tag = HARDWARE_DEVICE_TAG;
-    dev->device.common.version  = 0;
+    // TODO: We can't expect this version to be supported forever...
+    dev->device.common.version  = SENSORS_DEVICE_API_VERSION_0_1;
     dev->device.common.module   = const_cast<hw_module_t*>(module);
     dev->device.common.close    = poll__close;
     dev->device.activate        = poll__activate;
@@ -411,5 +408,3 @@ static int open_sensors(const struct hw_module_t* module, const char* id,
 
     return status;
 }
-
-

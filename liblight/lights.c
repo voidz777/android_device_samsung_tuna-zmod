@@ -16,6 +16,7 @@
 
 #define LOG_TAG "lights"
 #include <cutils/log.h>
+#include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
 #include <errno.h>
@@ -45,8 +46,12 @@ char const *const LED_FILE = "/dev/an30259a_leds";
 enum LED_Type {
 	LED_TYPE_ATTENTION = 0,
 	LED_TYPE_NOTIFICATION = 1,
+#ifdef CHARGING_LED
 	LED_TYPE_CHARGING = 2,
 	LED_TYPE_LAST = 3
+#else
+	LED_TYPE_LAST = 2
+#endif
 };
 
 // a "stack" of virtual LED states
@@ -91,7 +96,7 @@ static int rgb_to_brightness(struct light_state_t const *state)
 		+ (150*((color>>8) & 0x00ff)) + (29*(color & 0x00ff))) >> 8;
 }
 
-static int set_light_backlight(struct light_device_t *dev,
+static int set_light_backlight(struct light_device_t *dev __unused,
 			struct light_state_t const *state)
 {
 	int err = 0;
@@ -207,13 +212,13 @@ static int set_light_leds(struct light_state_t const *state, int type)
 	return write_leds_priority();
 }
 
-static int set_light_leds_notifications(struct light_device_t *dev,
+static int set_light_leds_notifications(struct light_device_t *dev __unused,
 			struct light_state_t const *state)
 {
 	return set_light_leds(state, LED_TYPE_NOTIFICATION);
 }
 
-static int set_light_leds_attention(struct light_device_t *dev,
+static int set_light_leds_attention(struct light_device_t *dev __unused,
 			struct light_state_t const *state)
 {
 	struct light_state_t attention_state = *state;
@@ -224,11 +229,13 @@ static int set_light_leds_attention(struct light_device_t *dev,
 	return set_light_leds(&attention_state, LED_TYPE_ATTENTION);
 }
 
-static int set_light_leds_battery(struct light_device_t *dev,
+#ifdef CHARGING_LED
+static int set_light_leds_battery(struct light_device_t *dev __unused,
 			struct light_state_t const *state)
 {
 	return set_light_leds(state, LED_TYPE_CHARGING);
 }
+#endif
 
 static int open_lights(const struct hw_module_t *module, char const *name,
 						struct hw_device_t **device)
@@ -242,8 +249,10 @@ static int open_lights(const struct hw_module_t *module, char const *name,
 		set_light = set_light_leds_notifications;
 	else if (0 == strcmp(LIGHT_ID_ATTENTION, name))
 		set_light = set_light_leds_attention;
+#ifdef CHARGING_LED
 	else if (0 == strcmp(LIGHT_ID_BATTERY, name))
 		set_light = set_light_leds_battery;
+#endif
 	else
 		return -EINVAL;
 
@@ -264,13 +273,13 @@ static int open_lights(const struct hw_module_t *module, char const *name,
 }
 
 static struct hw_module_methods_t lights_module_methods = {
-	.open =  open_lights,
+	.open = open_lights,
 };
 
 struct hw_module_t HAL_MODULE_INFO_SYM = {
 	.tag = HARDWARE_MODULE_TAG,
-	.version_major = 1,
-	.version_minor = 0,
+	.module_api_version = 1,
+	.hal_api_version = HARDWARE_HAL_API_VERSION,
 	.id = LIGHTS_HARDWARE_MODULE_ID,
 	.name = "lights Module",
 	.author = "Google, Inc.",
