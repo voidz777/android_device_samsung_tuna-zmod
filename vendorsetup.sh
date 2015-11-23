@@ -21,3 +21,4 @@
 # function: add_lunch_combo generic-eng
 
 add_lunch_combo aosp_tuna-userdebug
+add_lunch_combo eos_tuna-userdebug
